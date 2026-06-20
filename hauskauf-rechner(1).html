@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hauskauf-Rechner</title>
+<style>
+  :root{
+    --bg:#eef1f5; --surface:#ffffff; --surface-2:#f7f9fb;
+    --ink:#161b24; --ink-2:#5a6472; --ink-3:#8b95a3;
+    --line:#dde3ea; --line-2:#eceff4;
+    --accent:#1f3a63; --accent-2:#2f6fb0; --accent-soft:#e8eff6;
+    --good:#1f8a55; --good-soft:#e3f3ea;
+    --bad:#c2392f; --bad-soft:#f8e7e5;
+    --warn:#b5780f; --warn-soft:#fbf1de;
+    --r:10px; --r-sm:7px;
+    --mono:ui-monospace,"SF Mono",SFMono-Regular,"DejaVu Sans Mono",Menlo,Consolas,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:var(--sans); background:var(--bg); color:var(--ink);
+    font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased;
+  }
+  .num{font-variant-numeric:tabular-nums}
+  .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+  /* ---------- Header ---------- */
+  header{
+    background:var(--accent); color:#fff; position:sticky; top:0; z-index:30;
+    border-bottom:1px solid rgba(0,0,0,.2);
+  }
+  .head-inner{max-width:1180px;margin:0 auto;padding:12px 20px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+  .brand{display:flex;align-items:baseline;gap:10px;margin-right:auto}
+  .brand b{font-size:17px;font-weight:650;letter-spacing:.2px}
+  .brand .tag{font-size:11px;color:#a9c2e0;font-family:var(--mono);text-transform:uppercase;letter-spacing:1.5px}
+  .head-ctrl{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  select.house-sel{
+    background:#16294a;color:#fff;border:1px solid #2c4670;border-radius:var(--r-sm);
+    padding:7px 10px;font-size:13px;font-family:var(--sans);min-width:150px;cursor:pointer;
+  }
+  .hbtn{
+    background:#16294a;color:#dce8f6;border:1px solid #2c4670;border-radius:var(--r-sm);
+    padding:7px 11px;font-size:12.5px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;
+    transition:background .12s,border-color .12s;
+  }
+  .hbtn:hover{background:#1d3559;border-color:#3a5a8a}
+  .hbtn.primary{background:var(--accent-2);border-color:var(--accent-2);color:#fff;font-weight:600}
+  .hbtn.primary:hover{background:#3a7ec0}
+  .hbtn.danger:hover{background:#5a1f1c;border-color:#7a2c27;color:#ffd9d5}
+
+  /* ---------- Tabs ---------- */
+  nav.tabs{background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:53px;z-index:20}
+  .tabs-inner{max-width:1180px;margin:0 auto;padding:0 12px;display:flex;gap:2px;overflow-x:auto}
+  .tab{
+    border:none;background:none;padding:13px 14px;font-size:13.5px;color:var(--ink-2);cursor:pointer;
+    border-bottom:2.5px solid transparent;white-space:nowrap;font-family:var(--sans);transition:color .12s;
+  }
+  .tab:hover{color:var(--ink)}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent-2);font-weight:600}
+
+  /* ---------- Layout ---------- */
+  main{max-width:1180px;margin:0 auto;padding:22px 20px 80px}
+  .panel{display:none}
+  .panel.active{display:block;animation:fade .18s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  .grid{display:grid;gap:18px}
+  .g2{grid-template-columns:1fr 1fr}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  @media(max-width:820px){.g2,.g3{grid-template-columns:1fr}}
+
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px 18px 20px}
+  .card h2{margin:0 0 2px;font-size:12px;text-transform:uppercase;letter-spacing:1.3px;color:var(--accent-2);font-weight:700}
+  .card h2 + .sub{margin:0 0 16px;font-size:12.5px;color:var(--ink-3)}
+  .card > h2:first-child{margin-bottom:14px}
+
+  /* ---------- Inputs ---------- */
+  .field{margin-bottom:13px}
+  .field:last-child{margin-bottom:0}
+  .field label{display:block;font-size:12.5px;color:var(--ink-2);margin-bottom:5px;font-weight:500}
+  .field .hint{font-size:11px;color:var(--ink-3);font-weight:400}
+  .inwrap{position:relative;display:flex;align-items:center}
+  .inwrap .unit{position:absolute;right:11px;font-size:12.5px;color:var(--ink-3);pointer-events:none;font-family:var(--mono)}
+  input[type=text],input[type=number],select{
+    width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:var(--r-sm);
+    font-size:14px;font-family:var(--mono);background:var(--surface);color:var(--ink);
+    transition:border-color .12s,box-shadow .12s;
+  }
+  input[type=text]{font-family:var(--sans)}
+  .inwrap input{padding-right:38px}
+  input:focus,select:focus{outline:none;border-color:var(--accent-2);box-shadow:0 0 0 3px var(--accent-soft)}
+  select{font-family:var(--sans);cursor:pointer}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+  .check{display:flex;align-items:center;gap:8px;cursor:pointer}
+  .check input{width:16px;height:16px;accent-color:var(--accent-2);cursor:pointer}
+
+  /* ---------- Result rows / KPIs ---------- */
+  .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:11px;margin-bottom:4px}
+  .kpi{background:var(--surface-2);border:1px solid var(--line-2);border-radius:var(--r-sm);padding:13px 14px}
+  .kpi .lab{font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px}
+  .kpi .val{font-size:21px;font-weight:650;font-family:var(--mono);font-variant-numeric:tabular-nums;line-height:1.1}
+  .kpi .val.sm{font-size:17px}
+  .kpi.hero{background:var(--accent);border-color:var(--accent)}
+  .kpi.hero .lab{color:#a9c2e0}
+  .kpi.hero .val{color:#fff}
+  .kpi.good .val{color:var(--good)} .kpi.bad .val{color:var(--bad)}
+
+  .lrow{display:flex;justify-content:space-between;align-items:baseline;padding:7px 0;border-bottom:1px solid var(--line-2);font-size:13.5px}
+  .lrow:last-child{border-bottom:none}
+  .lrow .l{color:var(--ink-2)} .lrow .v{font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:550}
+  .lrow.total{border-top:2px solid var(--ink);margin-top:4px;padding-top:9px;font-weight:700;font-size:15px}
+  .lrow.total .v{font-size:15px}
+  .lrow.sub .l{padding-left:14px;color:var(--ink-3);font-size:13px}
+  .pos{color:var(--good)} .neg{color:var(--bad)}
+
+  /* ---------- Renovierung table ---------- */
+  .reno-cat{margin-bottom:18px}
+  .reno-cat > h3{font-size:12.5px;font-weight:700;color:var(--ink);margin:0 0 9px;display:flex;align-items:center;gap:8px}
+  .reno-cat > h3 .dot{width:8px;height:8px;border-radius:2px;background:var(--accent-2)}
+  .reno-tbl{width:100%;border-collapse:collapse}
+  .reno-tbl th{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--ink-3);text-align:left;padding:0 8px 7px;font-weight:600}
+  .reno-tbl th.r,.reno-tbl td.r{text-align:right}
+  .reno-tbl td{padding:4px 8px;border-top:1px solid var(--line-2)}
+  .reno-tbl td:first-child{color:var(--ink-2);font-size:13px;width:34%}
+  .reno-tbl input[type=number]{padding:6px 8px;font-size:13px}
+  .reno-tbl select{padding:6px 8px;font-size:12.5px}
+  .reno-sum{display:flex;justify-content:flex-end;gap:24px;margin-top:6px;padding-top:10px;border-top:2px solid var(--ink);font-size:13.5px}
+  .reno-sum b{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+  /* ---------- Vergleich ---------- */
+  .cmp-wrap{overflow-x:auto}
+  table.cmp{width:100%;border-collapse:collapse;min-width:560px}
+  table.cmp th,table.cmp td{padding:10px 13px;text-align:right;border-bottom:1px solid var(--line-2);font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:13.5px}
+  table.cmp th:first-child,table.cmp td:first-child{text-align:left;font-family:var(--sans);color:var(--ink-2);font-weight:500;position:sticky;left:0;background:var(--surface)}
+  table.cmp thead th{font-family:var(--sans);font-weight:650;color:var(--ink);border-bottom:2px solid var(--ink);font-size:13.5px;text-align:right}
+  table.cmp thead th:first-child{text-align:left}
+  table.cmp tr.sec td{background:var(--surface-2);font-family:var(--sans);font-weight:700;color:var(--accent-2);font-size:11px;text-transform:uppercase;letter-spacing:.7px;text-align:left}
+  table.cmp tr.best td.best{background:var(--good-soft);color:var(--good);font-weight:700;border-radius:4px}
+  .score-pill{display:inline-block;padding:3px 9px;border-radius:20px;font-weight:700;font-size:13px;font-family:var(--mono)}
+
+  /* ---------- Sliders ---------- */
+  .slider-row{display:grid;grid-template-columns:140px 1fr 54px;align-items:center;gap:12px;margin-bottom:11px}
+  .slider-row label{font-size:13px;color:var(--ink-2)}
+  input[type=range]{width:100%;accent-color:var(--accent-2)}
+  .slider-row .sv{font-family:var(--mono);font-size:13px;text-align:right;color:var(--ink)}
+
+  /* ---------- Score gauge ---------- */
+  .gauge{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+  .gauge svg{flex-shrink:0}
+  .bar-item{margin-bottom:9px}
+  .bar-item .bl{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:3px}
+  .bar-item .bl b{font-family:var(--mono)}
+  .bar-track{height:7px;background:var(--line);border-radius:4px;overflow:hidden}
+  .bar-fill{height:100%;border-radius:4px;transition:width .3s}
+
+  /* ---------- Chart ---------- */
+  .chart-wrap{margin-top:6px}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--ink-2);margin-top:8px}
+  .legend i{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+  svg text{font-family:var(--sans)}
+
+  .note{background:var(--surface-2);border-left:3px solid var(--accent-2);border-radius:0 var(--r-sm) var(--r-sm) 0;padding:10px 13px;font-size:12.5px;color:var(--ink-2);margin-top:14px}
+  .empty{text-align:center;padding:60px 20px;color:var(--ink-3)}
+  .empty b{display:block;color:var(--ink-2);font-size:16px;margin-bottom:6px}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden;margin-bottom:4px}
+  .seg button{border:none;background:var(--surface);padding:7px 14px;font-size:13px;cursor:pointer;color:var(--ink-2);font-family:var(--mono)}
+  .seg button.active{background:var(--accent);color:#fff;font-weight:600}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:11px 20px;border-radius:var(--r-sm);font-size:13.5px;opacity:0;transition:.25s;z-index:60;pointer-events:none}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="head-inner">
+    <div class="brand"><b>Hauskauf-Rechner</b><span class="tag">Kalkulation &amp; Vergleich</span></div>
+    <div class="head-ctrl">
+      <select class="house-sel" id="houseSel" onchange="selectHouse(this.value)"></select>
+      <button class="hbtn primary" onclick="newHouse()">+ Neues Haus</button>
+      <button class="hbtn" onclick="renameHouse()">Umbenennen</button>
+      <button class="hbtn danger" onclick="deleteHouse()">Löschen</button>
+      <button class="hbtn" onclick="exportJSON()">Export</button>
+      <button class="hbtn" onclick="document.getElementById('importFile').click()">Import</button>
+      <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importJSON(event)">
+    </div>
+  </div>
+</header>
+
+<nav class="tabs">
+  <div class="tabs-inner" id="tabBar">
+    <button class="tab active" data-tab="fin">Finanzierung</button>
+    <button class="tab" data-tab="neben">Nebenkosten</button>
+    <button class="tab" data-tab="reno">Renovierung</button>
+    <button class="tab" data-tab="daten">Hausdaten</button>
+    <button class="tab" data-tab="zukunft">Zukunftskosten</button>
+    <button class="tab" data-tab="verkauf">Verkauf &amp; Miete</button>
+    <button class="tab" data-tab="score">Bewertung</button>
+    <button class="tab" data-tab="vergleich">Vergleich</button>
+  </div>
+</nav>
+
+<main id="main"></main>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   STATE & PERSISTENZ
+   ============================================================ */
+const LS_KEY = "hauskaufRechner_v1";
+const GREST = { // Grunderwerbsteuer % je Bundesland
+  "Baden-Württemberg":5.0,"Bayern":3.5,"Berlin":6.0,"Brandenburg":6.5,"Bremen":5.0,
+  "Hamburg":5.5,"Hessen":6.0,"Mecklenburg-Vorpommern":6.0,"Niedersachsen":5.0,
+  "Nordrhein-Westfalen":6.5,"Rheinland-Pfalz":5.0,"Saarland":6.5,"Sachsen":5.5,
+  "Sachsen-Anhalt":5.0,"Schleswig-Holstein":6.5,"Thüringen":5.0
+};
+const ENERGIE = ["A+","A","B","C","D","E","F","G","H"];
+
+function defaultHouse(name){
+  return {
+    id: "h"+Date.now()+Math.floor(Math.random()*1000),
+    name: name || "Neues Haus",
+    daten:{baujahr:"",wohnflaeche:120,grundstueck:500,zimmer:4,energie:"D",heizung:"Gas",dach:"Satteldach",keller:true,garage:true,adresse:""},
+    fin:{kaufpreis:400000,eigenkapital:80000,zins:3.6,tilgung:2.0,sonderProJahr:0},
+    neben:{bundesland:"Nordrhein-Westfalen",grestPct:6.5,maklerPct:3.57,notarPct:1.5,grundbuchPct:0.5,sonstige:0},
+    reno:{}, // wird unten initialisiert
+    zukunft:{instandhaltung:0,heizkosten:140,strom:90,grundsteuer:55,versicherung:60}, // €/Monat (instand 0 = auto)
+    verkauf:{wertsteigerung:2.0,verkaufskostenPct:3.57,jahre:5},
+    miete:{kaltmiete:1200,mietsteigerung:2.0,rendite:5.0},
+    score:{lage:60}
+  };
+}
+const RENO_CATS = {
+  "Innen":["Böden","Wände / Tapeten","Türen","Badezimmer","Küche"],
+  "Technik":["Heizung","Elektrik","Sanitär","Fenster"],
+  "Außen":["Dach","Fassade","Garten","Terrasse","Garage"]
+};
+function initReno(h){
+  h.reno = h.reno || {};
+  for(const cat in RENO_CATS){
+    for(const pos of RENO_CATS[cat]){
+      const k = cat+":"+pos;
+      if(!h.reno[k]) h.reno[k] = {geschaetzt:0,tatsaechlich:0,prio:"Später"};
+    }
+  }
+}
+
+let app = { houses:[], activeId:null, weights:{preis:25,energie:20,reno:25,lage:30}, scoreRef:{good:2000,bad:6000,renoBadPct:30} };
+
+function load(){
+  try{
+    const raw = localStorage.getItem(LS_KEY);
+    if(raw){ app = JSON.parse(raw); }
+  }catch(e){ /* localStorage evtl. blockiert (z.B. Vorschau) – läuft trotzdem */ }
+  if(!app.houses || !app.houses.length){
+    const h = defaultHouse("Haus A"); app.houses=[h]; app.activeId=h.id;
+  }
+  if(!app.weights) app.weights={preis:25,energie:20,reno:25,lage:30};
+  if(!app.scoreRef) app.scoreRef={good:2000,bad:6000,renoBadPct:30};
+  app.houses.forEach(initReno);
+  if(!app.activeId || !app.houses.find(h=>h.id===app.activeId)) app.activeId=app.houses[0].id;
+}
+function save(){
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(app)); }catch(e){}
+}
+function active(){ return app.houses.find(h=>h.id===app.activeId); }
+
+/* ============================================================
+   HELFER
+   ============================================================ */
+const fmtE = n => (isFinite(n)?Math.round(n):0).toLocaleString("de-DE")+" €";
+const fmtE2 = n => (isFinite(n)?n:0).toLocaleString("de-DE",{maximumFractionDigits:0})+" €";
+const fmtP = n => (isFinite(n)?n:0).toLocaleString("de-DE",{maximumFractionDigits:1})+" %";
+const fmtN = (n,d=0) => (isFinite(n)?n:0).toLocaleString("de-DE",{minimumFractionDigits:d,maximumFractionDigits:d});
+function num(v){ const n=parseFloat(String(v).replace(",",".")); return isFinite(n)?n:0; }
+function toast(msg){ const t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),1900); }
+
+/* ---------- KERN-BERECHNUNGEN ---------- */
+function calc(h){
+  const f=h.fin, nb=h.neben;
+  // Nebenkosten
+  const grest = f.kaufpreis * nb.grestPct/100;
+  const makler = f.kaufpreis * nb.maklerPct/100;
+  const notar = f.kaufpreis * nb.notarPct/100;
+  const grundbuch = f.kaufpreis * nb.grundbuchPct/100;
+  const nebenSumme = grest+makler+notar+grundbuch+num(nb.sonstige);
+  // Renovierung
+  let renoGesamt=0, renoSofort=0;
+  for(const k in h.reno){
+    const r=h.reno[k];
+    const v = num(r.tatsaechlich)>0 ? num(r.tatsaechlich) : num(r.geschaetzt);
+    renoGesamt += v;
+    if(r.prio==="Sofort") renoSofort += v;
+  }
+  // Finanzierung
+  const gesamtinvest = f.kaufpreis + nebenSumme + renoGesamt;
+  const finanzbedarf = f.kaufpreis + nebenSumme + renoSofort;
+  const darlehen = Math.max(0, finanzbedarf - f.eigenkapital);
+  const annuitaetJahr = darlehen * (f.zins + f.tilgung)/100;
+  const rate = annuitaetJahr/12;
+  // Tilgungsplan (monatlich, mit jährl. Sondertilgung)
+  const plan = tilgungsplan(darlehen, f.zins, rate, num(f.sonderProJahr));
+  // Zukunftskosten (instandhaltung 0 => 1% des Kaufpreis/Jahr)
+  const z=h.zukunft;
+  const instandMon = num(z.instandhaltung)>0 ? num(z.instandhaltung) : (f.kaufpreis*0.01/12);
+  const zukunftMon = instandMon + num(z.heizkosten) + num(z.strom) + num(z.grundsteuer) + num(z.versicherung);
+  const gesamtMon = rate + zukunftMon;
+
+  return {grest,makler,notar,grundbuch,nebenSumme,renoGesamt,renoSofort,
+    gesamtinvest,finanzbedarf,darlehen,rate,annuitaetJahr,plan,instandMon,zukunftMon,gesamtMon};
+}
+function tilgungsplan(darlehen, zinsPct, rate, sonderProJahr){
+  let rest=darlehen, monate=0, gezahlt=0, zinsenGesamt=0;
+  const yearly=[{jahr:0,rest:darlehen}]; const monthly=[darlehen];
+  const zm=zinsPct/100/12;
+  if(rate<=0 || darlehen<=0){ return {monate:0,yearly,monthly,gezahlt:0,zinsenGesamt:0,restNach:(j)=>0,gezahltBis:(j)=>0,laufzeitJahre:0}; }
+  while(rest>0.01 && monate<70*12){
+    const zins=rest*zm; let tilg=rate-zins;
+    if(tilg<=0){ monate=9999; break; } // Rate deckt Zinsen nicht
+    if(tilg>rest) tilg=rest;
+    rest-=tilg; gezahlt+=zins+tilg; zinsenGesamt+=zins; monate++;
+    if(monate%12===0 && sonderProJahr>0 && rest>0){
+      const s=Math.min(sonderProJahr,rest); rest-=s; gezahlt+=s;
+    }
+    monthly.push(Math.max(0,rest));
+    if(monate%12===0) yearly.push({jahr:monate/12,rest:Math.max(0,rest)});
+  }
+  if(monate%12!==0) yearly.push({jahr:monate/12,rest:Math.max(0,rest)});
+  const restNach=(j)=>{ const idx=Math.min(j*12,monthly.length-1); return monthly[idx]||0; };
+  const gezahltBis=(j)=>{ // Summe gezahlter Raten bis Jahr j (ohne Sondertilgung der Übersicht halber näherungsweise rate*monate)
+    const m=Math.min(j*12,monate); return rate*m; };
+  return {monate,yearly,monthly,gezahlt,zinsenGesamt,restNach,gezahltBis,laufzeitJahre:monate>=9999?Infinity:monate/12};
+}
+
+/* ---------- VERKAUF / GEWINN ---------- */
+function verkaufsRechnung(h,c,jahre){
+  const f=h.fin, v=h.verkauf;
+  const hauswert = f.kaufpreis * Math.pow(1+v.wertsteigerung/100, jahre);
+  const verkaufskosten = hauswert * v.verkaufskostenPct/100;
+  const restschuld = c.plan.restNach(jahre);
+  const auszahlung = hauswert - verkaufskosten - restschuld;
+  const gezahlteRaten = c.plan.gezahltBis(jahre);
+  // getragene Wohnkosten (ohne Heizung/Strom – die hätte ein Mieter auch)
+  const z=h.zukunft;
+  const wohnkostenMon = c.instandMon + num(z.grundsteuer) + num(z.versicherung);
+  const wohnkosten = wohnkostenMon*12*jahre;
+  const eingesetzt = f.eigenkapital + gezahlteRaten + wohnkosten;
+  const bilanz = auszahlung - eingesetzt;
+  const wertzuwachs = hauswert - f.kaufpreis;
+  return {hauswert,verkaufskosten,restschuld,auszahlung,gezahlteRaten,wohnkosten,eingesetzt,bilanz,wertzuwachs};
+}
+// Jahr, ab dem kumulierte Wertsteigerung die Kaufnebenkosten deckt
+function amortisationNebenkosten(h,c){
+  const w=h.verkauf.wertsteigerung/100;
+  if(w<=0) return Infinity;
+  const ziel=c.nebenSumme;
+  // Kaufpreis*((1+w)^t -1) >= ziel
+  const t=Math.log(ziel/h.fin.kaufpreis + 1)/Math.log(1+w);
+  return t;
+}
+
+/* ---------- KAUFEN vs MIETEN ---------- */
+function kaufenVsMieten(h,c,jahre){
+  const f=h.fin, m=h.miete, z=h.zukunft;
+  const months=jahre*12;
+  const zm=f.zins/100/12, rendite=m.rendite/100/12;
+  // Käufer-monatliche Mehrkosten ggü. Mieter: Rate + Instand + Grundsteuer + Versicherung
+  const kaufKostenBasisMon = c.rate + c.instandMon + num(z.grundsteuer) + num(z.versicherung);
+  // Mieter legt das Eigenkapital an + monatl. Differenz wenn Kaufen teurer
+  let depot=f.eigenkapital;
+  let rest=c.darlehen;
+  let miete=num(m.kaltmiete);
+  const buyWealth=[], rentWealth=[];
+  let crossover=null;
+  for(let mo=0; mo<=months; mo++){
+    // Vermögen Käufer am Monatsanfang
+    const wert=f.kaufpreis*Math.pow(1+h.verkauf.wertsteigerung/100, mo/12);
+    const eqKauf = wert - rest;
+    buyWealth.push(eqKauf);
+    rentWealth.push(depot);
+    if(crossover===null && mo>0 && eqKauf>=depot) crossover=mo/12;
+    if(mo===months) break;
+    // einen Monat fortschreiben
+    // Kredit
+    if(rest>0){ const zins=rest*zm; let tilg=c.rate-zins; if(tilg<0)tilg=0; if(tilg>rest)tilg=rest; rest-=tilg;
+      if((mo+1)%12===0 && num(f.sonderProJahr)>0 && rest>0){ rest=Math.max(0,rest-num(f.sonderProJahr)); } }
+    // Miete jährlich steigern
+    if(mo>0 && mo%12===0) miete*=(1+m.mietsteigerung/100);
+    // Mieter spart Differenz (Kaufkosten - Miete), wenn positiv, in Depot; Depot verzinst
+    const diff=kaufKostenBasisMon - miete;
+    depot*=(1+rendite);
+    if(diff>0) depot+=diff;
+  }
+  return {buyWealth,rentWealth,crossover,
+    buyEnd:buyWealth[buyWealth.length-1], rentEnd:rentWealth[rentWealth.length-1]};
+}
+
+/* ---------- SCORE ---------- */
+function scores(h,c){
+  const f=h.fin;
+  // Preis-Leistung über €/m²
+  const ppm = h.daten.wohnflaeche>0 ? f.kaufpreis/h.daten.wohnflaeche : app.scoreRef.bad;
+  const sP = clamp(100*(app.scoreRef.bad-ppm)/(app.scoreRef.bad-app.scoreRef.good),0,100);
+  // Energie
+  const idx=ENERGIE.indexOf(h.daten.energie); const sE=idx<0?50:100*(1-idx/(ENERGIE.length-1));
+  // Renovierung (% vom Kaufpreis)
+  const renoPct = f.kaufpreis>0 ? c.renoGesamt/f.kaufpreis*100 : 0;
+  const sR = clamp(100*(1-renoPct/app.scoreRef.renoBadPct),0,100);
+  // Lage manuell
+  const sL = clamp(h.score.lage,0,100);
+  const w=app.weights, wsum=w.preis+w.energie+w.reno+w.lage || 1;
+  const total=(sP*w.preis+sE*w.energie+sR*w.reno+sL*w.lage)/wsum;
+  return {preis:sP,energie:sE,reno:sR,lage:sL,ppm,renoPct,total};
+}
+function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+function scoreColor(s){ return s>=70?"var(--good)":s>=45?"var(--warn)":"var(--bad)"; }
+
+/* ============================================================
+   SVG LINIENCHART (self-contained)
+   ============================================================ */
+function lineChart(series, opts){
+  // series: [{data:[{x,y}], color, label}], opts:{w,h,yfmt,xlabel}
+  const W=opts.w||620, H=opts.h||240, pad={l:62,r:16,t:14,b:30};
+  const all=series.flatMap(s=>s.data);
+  if(!all.length) return "";
+  const xs=all.map(p=>p.x), ys=all.map(p=>p.y);
+  let xmin=Math.min(...xs), xmax=Math.max(...xs);
+  let ymin=Math.min(0,...ys), ymax=Math.max(...ys);
+  if(ymax===ymin) ymax=ymin+1;
+  const yPad=(ymax-ymin)*0.06; ymax+=yPad;
+  const px=x=>pad.l+(x-xmin)/(xmax-xmin||1)*(W-pad.l-pad.r);
+  const py=y=>H-pad.b-(y-ymin)/(ymax-ymin||1)*(H-pad.t-pad.b);
+  let g="";
+  // y-gridlines
+  const ticks=5;
+  for(let i=0;i<=ticks;i++){
+    const yv=ymin+(ymax-ymin)*i/ticks; const y=py(yv);
+    g+=`<line x1="${pad.l}" y1="${y.toFixed(1)}" x2="${W-pad.r}" y2="${y.toFixed(1)}" stroke="var(--line)" stroke-width="1"/>`;
+    g+=`<text x="${pad.l-8}" y="${(y+4).toFixed(1)}" text-anchor="end" font-size="10.5" fill="var(--ink-3)">${opts.yfmt?opts.yfmt(yv):Math.round(yv)}</text>`;
+  }
+  // x labels
+  const xticks=Math.min(xmax-xmin,8);
+  for(let i=0;i<=xticks;i++){
+    const xv=xmin+(xmax-xmin)*i/xticks; const x=px(xv);
+    g+=`<text x="${x.toFixed(1)}" y="${H-pad.b+16}" text-anchor="middle" font-size="10.5" fill="var(--ink-3)">${Math.round(xv)}</text>`;
+  }
+  g+=`<text x="${(W/2).toFixed(0)}" y="${H-2}" text-anchor="middle" font-size="10.5" fill="var(--ink-3)">${opts.xlabel||"Jahr"}</text>`;
+  // series
+  for(const s of series){
+    if(!s.data.length) continue;
+    const d=s.data.map((p,i)=>(i?"L":"M")+px(p.x).toFixed(1)+" "+py(p.y).toFixed(1)).join(" ");
+    g+=`<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2.4" stroke-linejoin="round"/>`;
+  }
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">${g}</svg>`;
+}
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+let currentTab="fin";
+function render(){
+  renderHouseSel();
+  const h=active(); const c=calc(h);
+  const main=document.getElementById("main");
+  let html="";
+  html+=`<div class="panel${currentTab==="fin"?" active":""}" data-p="fin">${viewFin(h,c)}</div>`;
+  html+=`<div class="panel${currentTab==="neben"?" active":""}" data-p="neben">${viewNeben(h,c)}</div>`;
+  html+=`<div class="panel${currentTab==="reno"?" active":""}" data-p="reno">${viewReno(h,c)}</div>`;
+  html+=`<div class="panel${currentTab==="daten"?" active":""}" data-p="daten">${viewDaten(h,c)}</div>`;
+  html+=`<div class="panel${currentTab==="zukunft"?" active":""}" data-p="zukunft">${viewZukunft(h,c)}</div>`;
+  html+=`<div class="panel${currentTab==="verkauf"?" active":""}" data-p="verkauf">${viewVerkauf(h,c)}</div>`;
+  html+=`<div class="panel${currentTab==="score"?" active":""}" data-p="score">${viewScore(h,c)}</div>`;
+  html+=`<div class="panel${currentTab==="vergleich"?" active":""}" data-p="vergleich">${viewVergleich()}</div>`;
+  main.innerHTML=html;
+  save();
+}
+function renderHouseSel(){
+  const sel=document.getElementById("houseSel");
+  sel.innerHTML=app.houses.map(h=>`<option value="${h.id}"${h.id===app.activeId?" selected":""}>${esc(h.name)}</option>`).join("");
+}
+function esc(s){return String(s).replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));}
+
+/* ---- generische input-Bausteine ---- */
+function inE(path,unit,step){return `<div class="inwrap"><input type="number" step="${step||1}" value="${getP(path)}" onchange="setP('${path}',this.value)"><span class="unit">${unit||"€"}</span></div>`;}
+function getP(path){ const h=active(); return path.split(".").reduce((o,k)=>o&&o[k],h); }
+function setP(path,val){ const h=active(); const parts=path.split("."); let o=h; for(let i=0;i<parts.length-1;i++)o=o[parts[i]]; o[parts[parts.length-1]]=num(val); render(); }
+function setPstr(path,val){ const h=active(); const parts=path.split("."); let o=h; for(let i=0;i<parts.length-1;i++)o=o[parts[i]]; o[parts[parts.length-1]]=val; render(); }
+function setPbool(path,val){ const h=active(); const parts=path.split("."); let o=h; for(let i=0;i<parts.length-1;i++)o=o[parts[i]]; o[parts[parts.length-1]]=val; render(); }
+
+/* ---------- TAB: Finanzierung ---------- */
+function viewFin(h,c){
+  const lz=c.plan.laufzeitJahre;
+  const lzTxt = lz===Infinity ? "nie (Rate zu niedrig)" : fmtN(lz,1)+" Jahre";
+  // Restschuld-Slider Jahr
+  const rsj = h.fin._rsj || 10;
+  const restschuld=c.plan.restNach(rsj);
+  // Chart Restschuldverlauf
+  const planData=c.plan.yearly.map(p=>({x:p.jahr,y:p.rest}));
+  const chart=lineChart([{data:planData,color:"var(--accent-2)",label:"Restschuld"}],{yfmt:v=>Math.round(v/1000)+"k",xlabel:"Jahr"});
+  return `
+  <div class="grid g2">
+    <div class="card">
+      <h2>Darlehen &amp; Konditionen</h2>
+      <div class="row2">
+        <div class="field"><label>Kaufpreis</label>${inE("fin.kaufpreis","€",1000)}</div>
+        <div class="field"><label>Eigenkapital</label>${inE("fin.eigenkapital","€",1000)}</div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Sollzins p.a.</label>${inE("fin.zins","%",0.1)}</div>
+        <div class="field"><label>Anf. Tilgung p.a.</label>${inE("fin.tilgung","%",0.1)}</div>
+      </div>
+      <div class="field"><label>Sondertilgung pro Jahr <span class="hint">(optional)</span></label>${inE("fin.sonderProJahr","€",500)}</div>
+      <div class="note">Finanziert wird Kaufpreis + Kaufnebenkosten + Sofort-Renovierung abzüglich Eigenkapital. Nebenkosten &amp; Renovierung pflegst du in den jeweiligen Tabs.</div>
+    </div>
+    <div class="card">
+      <h2>Ergebnis</h2>
+      <div class="kpi-grid" style="margin-bottom:16px">
+        <div class="kpi hero"><div class="lab">Monatliche Rate</div><div class="val">${fmtE(c.rate)}</div></div>
+        <div class="kpi"><div class="lab">Darlehenssumme</div><div class="val sm">${fmtE(c.darlehen)}</div></div>
+      </div>
+      <div class="lrow"><span class="l">Finanzierungsbedarf</span><span class="v">${fmtE(c.finanzbedarf)}</span></div>
+      <div class="lrow"><span class="l">− Eigenkapital</span><span class="v">${fmtE(h.fin.eigenkapital)}</span></div>
+      <div class="lrow"><span class="l">Beleihung (Kredit / Kaufpreis)</span><span class="v">${fmtP(c.darlehen/h.fin.kaufpreis*100)}</span></div>
+      <div class="lrow"><span class="l">Volle Tilgungsdauer</span><span class="v">${lzTxt}</span></div>
+      <div class="lrow"><span class="l">Zinsen gesamt (bis Volltilgung)</span><span class="v">${lz===Infinity?"–":fmtE(c.plan.zinsenGesamt)}</span></div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:18px">
+    <h2>Restschuld nach Jahren</h2>
+    <div class="slider-row" style="grid-template-columns:140px 1fr 120px;max-width:540px">
+      <label>Nach <b class="mono" id="rsjY">${rsj}</b> Jahren</label>
+      <input type="range" min="1" max="${Math.min(40,lz===Infinity?40:Math.ceil(lz))}" value="${rsj}" oninput="updateRsj(this.value)">
+      <div class="sv" id="rsjV" style="text-align:right;font-weight:700;color:var(--accent)">${fmtE(restschuld)}</div>
+    </div>
+    <div class="chart-wrap">${chart}</div>
+    <div class="legend"><span><i style="background:var(--accent-2)"></i>Restschuld über die Zeit</span></div>
+  </div>`;
+}
+
+/* ---------- TAB: Nebenkosten ---------- */
+function viewNeben(h,c){
+  const nb=h.neben;
+  const blOpts=Object.keys(GREST).map(b=>`<option value="${b}"${b===nb.bundesland?" selected":""}>${b}</option>`).join("");
+  return `
+  <div class="grid g2">
+    <div class="card">
+      <h2>Kaufnebenkosten</h2>
+      <p class="sub">Grunderwerbsteuer wird automatisch nach Bundesland gesetzt – alle Sätze überschreibbar.</p>
+      <div class="field"><label>Bundesland</label>
+        <select onchange="setBundesland(this.value)">${blOpts}</select>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Grunderwerbsteuer</label>${inE("neben.grestPct","%",0.1)}</div>
+        <div class="field"><label>Maklerprovision</label>${inE("neben.maklerPct","%",0.01)}</div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Notar</label>${inE("neben.notarPct","%",0.1)}</div>
+        <div class="field"><label>Grundbuch</label>${inE("neben.grundbuchPct","%",0.1)}</div>
+      </div>
+      <div class="field"><label>Sonstige Kosten <span class="hint">(Gutachter, Umzug …)</span></label>${inE("neben.sonstige","€",100)}</div>
+    </div>
+    <div class="card">
+      <h2>Aufschlüsselung</h2>
+      <div class="lrow"><span class="l">Grunderwerbsteuer (${fmtP(nb.grestPct)})</span><span class="v">${fmtE(c.grest)}</span></div>
+      <div class="lrow"><span class="l">Makler (${fmtP(nb.maklerPct)})</span><span class="v">${fmtE(c.makler)}</span></div>
+      <div class="lrow"><span class="l">Notar (${fmtP(nb.notarPct)})</span><span class="v">${fmtE(c.notar)}</span></div>
+      <div class="lrow"><span class="l">Grundbuch (${fmtP(nb.grundbuchPct)})</span><span class="v">${fmtE(c.grundbuch)}</span></div>
+      <div class="lrow"><span class="l">Sonstige</span><span class="v">${fmtE(num(nb.sonstige))}</span></div>
+      <div class="lrow total"><span class="l">Gesamte Nebenkosten</span><span class="v">${fmtE(c.nebenSumme)}</span></div>
+      <div class="kpi-grid" style="margin-top:18px">
+        <div class="kpi"><div class="lab">Anteil am Kaufpreis</div><div class="val sm">${fmtP(c.nebenSumme/h.fin.kaufpreis*100)}</div></div>
+        <div class="kpi hero"><div class="lab">Kaufpreis + Nebenkosten</div><div class="val sm">${fmtE(h.fin.kaufpreis+c.nebenSumme)}</div></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ---------- TAB: Renovierung ---------- */
+function viewReno(h,c){
+  let cats="";
+  for(const cat in RENO_CATS){
+    let rows="", sumG=0, sumT=0;
+    for(const pos of RENO_CATS[cat]){
+      const k=cat+":"+pos, r=h.reno[k];
+      sumG+=num(r.geschaetzt); sumT+=num(r.tatsaechlich);
+      rows+=`<tr>
+        <td>${pos}</td>
+        <td class="r"><div class="inwrap"><input type="number" step="500" value="${r.geschaetzt}" onchange="setReno('${k}','geschaetzt',this.value)"><span class="unit">€</span></div></td>
+        <td class="r"><div class="inwrap"><input type="number" step="500" value="${r.tatsaechlich}" onchange="setReno('${k}','tatsaechlich',this.value)"><span class="unit">€</span></div></td>
+        <td class="r"><select onchange="setReno('${k}','prio',this.value)">
+          <option${r.prio==="Sofort"?" selected":""}>Sofort</option>
+          <option${r.prio==="Später"?" selected":""}>Später</option></select></td>
+      </tr>`;
+    }
+    cats+=`<div class="reno-cat"><h3><span class="dot"></span>${cat}</h3>
+      <table class="reno-tbl"><thead><tr><th>Position</th><th class="r">Geschätzt</th><th class="r">Tatsächlich</th><th class="r">Priorität</th></tr></thead>
+      <tbody>${rows}</tbody></table>
+      <div class="reno-sum"><span>Geschätzt: <b>${fmtE(sumG)}</b></span><span>Tatsächlich: <b>${fmtE(sumT)}</b></span></div></div>`;
+  }
+  return `
+  <div class="grid g2" style="grid-template-columns:1.6fr 1fr">
+    <div class="card">
+      <h2>Renovierungspositionen</h2>
+      <p class="sub">„Tatsächlich" überschreibt die Schätzung in allen Berechnungen, sobald &gt; 0. „Sofort" fließt in den Finanzierungsbedarf ein.</p>
+      ${cats}
+    </div>
+    <div class="card" style="align-self:start">
+      <h2>Summen</h2>
+      <div class="kpi-grid">
+        <div class="kpi hero"><div class="lab">Renovierung gesamt</div><div class="val sm">${fmtE(c.renoGesamt)}</div></div>
+        <div class="kpi warn" style="background:var(--warn-soft);border-color:var(--warn-soft)"><div class="lab">davon „Sofort"</div><div class="val sm" style="color:var(--warn)">${fmtE(c.renoSofort)}</div></div>
+      </div>
+      <div class="lrow" style="margin-top:14px"><span class="l">Anteil am Kaufpreis</span><span class="v">${fmtP(c.renoGesamt/h.fin.kaufpreis*100)}</span></div>
+      <div class="lrow"><span class="l">Sofort-Anteil → Finanzierung</span><span class="v">${fmtE(c.renoSofort)}</span></div>
+      <div class="lrow"><span class="l">Später (Rücklage nötig)</span><span class="v">${fmtE(c.renoGesamt-c.renoSofort)}</span></div>
+      <div class="note">Werte aus Immobilienanzeigen lassen sich hier 1:1 erfassen und später durch echte Angebote ersetzen.</div>
+    </div>
+  </div>`;
+}
+
+/* ---------- TAB: Hausdaten ---------- */
+function viewDaten(h,c){
+  const d=h.daten;
+  const enOpts=ENERGIE.map(e=>`<option${e===d.energie?" selected":""}>${e}</option>`).join("");
+  const heizOpts=["Gas","Öl","Wärmepumpe","Fernwärme","Pellets","Strom","Sonstige"].map(x=>`<option${x===d.heizung?" selected":""}>${x}</option>`).join("");
+  const dachOpts=["Satteldach","Flachdach","Walmdach","Pultdach","Mansarddach","Sonstige"].map(x=>`<option${x===d.dach?" selected":""}>${x}</option>`).join("");
+  return `
+  <div class="grid g2">
+    <div class="card">
+      <h2>Objektdaten</h2>
+      <div class="row2">
+        <div class="field"><label>Baujahr</label><input type="number" value="${d.baujahr}" onchange="setPstr('daten.baujahr',this.value)"></div>
+        <div class="field"><label>Wohnfläche</label><div class="inwrap"><input type="number" value="${d.wohnflaeche}" onchange="setP('daten.wohnflaeche',this.value)"><span class="unit">m²</span></div></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Grundstück</label><div class="inwrap"><input type="number" value="${d.grundstueck}" onchange="setP('daten.grundstueck',this.value)"><span class="unit">m²</span></div></div>
+        <div class="field"><label>Zimmer</label><input type="number" step="0.5" value="${d.zimmer}" onchange="setP('daten.zimmer',this.value)"></div>
+      </div>
+      <div class="field"><label>Adresse</label><input type="text" value="${esc(d.adresse)}" onchange="setPstr('daten.adresse',this.value)" placeholder="Straße, PLZ Ort"></div>
+    </div>
+    <div class="card">
+      <h2>Ausstattung &amp; Energie</h2>
+      <div class="row2">
+        <div class="field"><label>Energieklasse</label><select onchange="setPstr('daten.energie',this.value)">${enOpts}</select></div>
+        <div class="field"><label>Heizungsart</label><select onchange="setPstr('daten.heizung',this.value)">${heizOpts}</select></div>
+      </div>
+      <div class="field"><label>Dachtyp</label><select onchange="setPstr('daten.dach',this.value)">${dachOpts}</select></div>
+      <div class="row2" style="margin-top:6px">
+        <label class="check"><input type="checkbox" ${d.keller?"checked":""} onchange="setPbool('daten.keller',this.checked)"> Keller vorhanden</label>
+        <label class="check"><input type="checkbox" ${d.garage?"checked":""} onchange="setPbool('daten.garage',this.checked)"> Garage / Stellplatz</label>
+      </div>
+      <div class="kpi-grid" style="margin-top:18px">
+        <div class="kpi"><div class="lab">Preis pro m²</div><div class="val sm">${fmtE(d.wohnflaeche>0?h.fin.kaufpreis/d.wohnflaeche:0)}</div></div>
+        <div class="kpi"><div class="lab">Alter</div><div class="val sm">${d.baujahr?(new Date().getFullYear()-num(d.baujahr))+" J.":"–"}</div></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ---------- TAB: Zukunftskosten ---------- */
+function viewZukunft(h,c){
+  const z=h.zukunft;
+  const autoInstand = num(z.instandhaltung)===0;
+  return `
+  <div class="grid g2">
+    <div class="card">
+      <h2>Laufende Kosten <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--ink-3)">(€ / Monat)</span></h2>
+      <div class="field"><label>Instandhaltungsrücklage ${autoInstand?'<span class="hint">— 0 = automatisch 1 %/Jahr des Kaufpreises</span>':''}</label>${inE("zukunft.instandhaltung","€",10)}</div>
+      <div class="row2">
+        <div class="field"><label>Heizkosten</label>${inE("zukunft.heizkosten","€",10)}</div>
+        <div class="field"><label>Stromkosten</label>${inE("zukunft.strom","€",10)}</div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Grundsteuer</label>${inE("zukunft.grundsteuer","€",5)}</div>
+        <div class="field"><label>Versicherungen</label>${inE("zukunft.versicherung","€",5)}</div>
+      </div>
+      ${autoInstand?`<div class="note">Automatische Instandhaltung: ${fmtE(c.instandMon)}/Monat (1 % des Kaufpreises p.a.). Eigenen Wert eintragen, um zu überschreiben.</div>`:""}
+    </div>
+    <div class="card">
+      <h2>Echte Monatsbelastung</h2>
+      <div class="kpi hero" style="margin-bottom:16px"><div class="lab">Gesamt pro Monat</div><div class="val">${fmtE(c.gesamtMon)}</div></div>
+      <div class="lrow"><span class="l">Kreditrate</span><span class="v">${fmtE(c.rate)}</span></div>
+      <div class="lrow"><span class="l">Instandhaltung</span><span class="v">${fmtE(c.instandMon)}</span></div>
+      <div class="lrow"><span class="l">Heizung</span><span class="v">${fmtE(num(z.heizkosten))}</span></div>
+      <div class="lrow"><span class="l">Strom</span><span class="v">${fmtE(num(z.strom))}</span></div>
+      <div class="lrow"><span class="l">Grundsteuer</span><span class="v">${fmtE(num(z.grundsteuer))}</span></div>
+      <div class="lrow"><span class="l">Versicherungen</span><span class="v">${fmtE(num(z.versicherung))}</span></div>
+      <div class="lrow total"><span class="l">Summe / Monat</span><span class="v">${fmtE(c.gesamtMon)}</span></div>
+      <div class="lrow"><span class="l">Hochgerechnet / Jahr</span><span class="v">${fmtE(c.gesamtMon*12)}</span></div>
+    </div>
+  </div>`;
+}
+
+/* ---------- TAB: Verkauf & Miete ---------- */
+function viewVerkauf(h,c){
+  const v=h.verkauf, m=h.miete;
+  const jahre=v.jahre;
+  const vr=verkaufsRechnung(h,c,jahre);
+  const amort=amortisationNebenkosten(h,c);
+  const kvm=kaufenVsMieten(h,c,Math.max(jahre,15));
+  // Verkaufstabelle 3/5/10/15
+  const horizonte=[3,5,10,15];
+  let vtbl=horizonte.map(j=>{
+    const r=verkaufsRechnung(h,c,j);
+    const cls=r.bilanz>=0?"pos":"neg";
+    return `<tr>
+      <td style="text-align:left;font-family:var(--sans)">${j} Jahre</td>
+      <td>${fmtE(r.hauswert)}</td>
+      <td>${fmtE(r.restschuld)}</td>
+      <td>${fmtE(r.auszahlung)}</td>
+      <td class="${cls}" style="font-weight:700">${r.bilanz>=0?"+":""}${fmtE(r.bilanz)}</td>
+    </tr>`;
+  }).join("");
+  // Chart Kaufen vs Mieten (jährlich abgetastet)
+  const stepM=12;
+  const buy=[], rent=[];
+  for(let i=0;i<kvm.buyWealth.length;i+=stepM){ buy.push({x:i/12,y:kvm.buyWealth[i]}); rent.push({x:i/12,y:kvm.rentWealth[i]}); }
+  const chart=lineChart([
+    {data:buy,color:"var(--accent-2)",label:"Kaufen"},
+    {data:rent,color:"var(--warn)",label:"Mieten"}
+  ],{yfmt:x=>Math.round(x/1000)+"k",xlabel:"Jahr"});
+  const segBtns=horizonte.map(j=>`<button class="${j===jahre?"active":""}" onclick="setP('verkauf.jahre',${j})">${j} J.</button>`).join("");
+
+  return `
+  <div class="grid g2">
+    <div class="card">
+      <h2>Annahmen</h2>
+      <div class="row2">
+        <div class="field"><label>Wertsteigerung p.a.</label>${inE("verkauf.wertsteigerung","%",0.5)}</div>
+        <div class="field"><label>Verkaufskosten</label>${inE("verkauf.verkaufskostenPct","%",0.5)}</div>
+      </div>
+      <h2 style="margin-top:18px">Mietvergleich</h2>
+      <div class="field"><label>Vergleichs-Kaltmiete</label>${inE("miete.kaltmiete","€",50)}</div>
+      <div class="row2">
+        <div class="field"><label>Mietsteigerung p.a.</label>${inE("miete.mietsteigerung","%",0.5)}</div>
+        <div class="field"><label>Anlagerendite p.a.</label>${inE("miete.rendite","%",0.5)}</div>
+      </div>
+      <div class="note">Kaufen-vs-Mieten legt das Eigenkapital + monatliche Mehrkosten des Käufers beim Mieter zur Anlagerendite an und vergleicht das Vermögen über die Zeit.</div>
+    </div>
+    <div class="card">
+      <h2>Amortisation &amp; Vermögen</h2>
+      <div class="kpi-grid" style="margin-bottom:14px">
+        <div class="kpi"><div class="lab">Nebenkosten „drin" ab</div><div class="val sm">${amort===Infinity?"nie":fmtN(amort,1)+" J."}</div></div>
+        <div class="kpi ${kvm.crossover?"good":""}"><div class="lab">Kaufen ≥ Mieten ab</div><div class="val sm">${kvm.crossover?fmtN(kvm.crossover,1)+" J.":"&gt; "+Math.max(jahre,15)+" J."}</div></div>
+      </div>
+      <div class="lrow"><span class="l">Vermögen Kaufen (nach ${jahre} J.)</span><span class="v">${fmtE(verkaufsRechnung(h,c,jahre).auszahlung)}</span></div>
+      <div class="lrow"><span class="l">Vermögen Mieten (nach ${jahre} J.)</span><span class="v">${fmtE(kvm.rentWealth[jahre*12]||kvm.rentEnd)}</span></div>
+      <div class="lrow"><span class="l">Vorteil Kaufen</span><span class="v ${(verkaufsRechnung(h,c,jahre).auszahlung-(kvm.rentWealth[jahre*12]||0))>=0?"pos":"neg"}">${fmtE(verkaufsRechnung(h,c,jahre).auszahlung-(kvm.rentWealth[jahre*12]||0))}</span></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:18px">
+    <h2>Verkaufsszenario</h2>
+    <div class="seg" style="margin-bottom:14px">${segBtns}</div>
+    <div class="grid g2" style="grid-template-columns:1fr 1.3fr;gap:24px">
+      <div>
+        <div class="lrow"><span class="l">Hauswert nach ${jahre} J.</span><span class="v">${fmtE(vr.hauswert)}</span></div>
+        <div class="lrow sub"><span class="l">davon Wertzuwachs</span><span class="v pos">+${fmtE(vr.wertzuwachs)}</span></div>
+        <div class="lrow"><span class="l">− Verkaufskosten</span><span class="v">${fmtE(vr.verkaufskosten)}</span></div>
+        <div class="lrow"><span class="l">− Restschuld</span><span class="v">${fmtE(vr.restschuld)}</span></div>
+        <div class="lrow total"><span class="l">Auszahlung beim Verkauf</span><span class="v">${fmtE(vr.auszahlung)}</span></div>
+        <div class="lrow" style="margin-top:10px"><span class="l">− Eingesetztes Eigenkapital</span><span class="v">${fmtE(h.fin.eigenkapital)}</span></div>
+        <div class="lrow"><span class="l">− Gezahlte Raten</span><span class="v">${fmtE(vr.gezahlteRaten)}</span></div>
+        <div class="lrow"><span class="l">− Wohnkosten (Instand/Steuer/Vers.)</span><span class="v">${fmtE(vr.wohnkosten)}</span></div>
+        <div class="lrow total"><span class="l">Tatsächlicher Gewinn / Verlust</span><span class="v ${vr.bilanz>=0?"pos":"neg"}">${vr.bilanz>=0?"+":""}${fmtE(vr.bilanz)}</span></div>
+      </div>
+      <div>
+        <table class="cmp" style="min-width:0">
+          <thead><tr><th>Horizont</th><th>Hauswert</th><th>Restschuld</th><th>Auszahlung</th><th>Bilanz</th></tr></thead>
+          <tbody>${vtbl}</tbody>
+        </table>
+      </div>
+    </div>
+    <div class="note">Die Bilanz zählt alle Raten und Wohnkosten als Ausgabe, rechnet aber die <b>ersparte Miete nicht gegen</b> – wohnen muss man ohnehin. Ein negativer Wert heißt also nicht zwangsläufig „Verlustgeschäft". Der faire Vergleich steckt oben im Kaufen-vs-Mieten-Vermögen.</div>
+  </div>
+
+  <div class="card" style="margin-top:18px">
+    <h2>Kaufen vs. Mieten — Vermögensentwicklung</h2>
+    <div class="chart-wrap">${chart}</div>
+    <div class="legend">
+      <span><i style="background:var(--accent-2)"></i>Vermögen beim Kaufen (Hauswert − Restschuld)</span>
+      <span><i style="background:var(--warn)"></i>Vermögen beim Mieten (angelegtes Kapital)</span>
+    </div>
+  </div>`;
+}
+
+/* ---------- TAB: Bewertung ---------- */
+function viewScore(h,c){
+  const s=scores(h,c);
+  const w=app.weights;
+  const ring=scoreRing(s.total);
+  const bar=(lab,val,extra)=>`<div class="bar-item"><div class="bl"><span>${lab} ${extra||""}</span><b>${Math.round(val)}</b></div><div class="bar-track"><div class="bar-fill" style="width:${val}%;background:${scoreColor(val)}"></div></div></div>`;
+  return `
+  <div class="grid g2" style="grid-template-columns:1fr 1.1fr">
+    <div class="card">
+      <h2>Gesamtbewertung</h2>
+      <div class="gauge" style="margin:6px 0 18px">${ring}
+        <div>
+          <div style="font-size:13px;color:var(--ink-2);margin-bottom:8px">Score für <b>${esc(h.name)}</b></div>
+          <div style="font-size:12.5px;color:var(--ink-3)">Automatisch aus Preis, Energie und Renovierung; Lage gibst du selbst vor. Gewichtung rechts anpassbar.</div>
+        </div>
+      </div>
+      ${bar("Preis-Leistung",s.preis,`<span class="hint">(${fmtE(s.ppm)}/m²)</span>`)}
+      ${bar("Energieeffizienz",s.energie,`<span class="hint">(${h.daten.energie})</span>`)}
+      ${bar("Renovierungsaufwand",s.reno,`<span class="hint">(${fmtP(s.renoPct)} v. Kaufpreis)</span>`)}
+      ${bar("Lage",s.lage,"")}
+    </div>
+    <div class="card">
+      <h2>Lagebewertung</h2>
+      <div class="slider-row" style="grid-template-columns:80px 1fr 44px"><label>Lage</label><input type="range" min="0" max="100" value="${h.score.lage}" oninput="this.nextElementSibling.textContent=this.value;setQuiet('score.lage',this.value)" onchange="render()"><div class="sv">${h.score.lage}</div></div>
+      <h2 style="margin-top:20px">Gewichtung der Kriterien</h2>
+      <p class="sub">Bestimmt, wie stark jedes Kriterium in den Gesamtscore einfließt (gilt für alle Häuser).</p>
+      <div class="slider-row"><label>Preis-Leistung</label><input type="range" min="0" max="100" value="${w.preis}" oninput="this.nextElementSibling.textContent=this.value+'%';setWeightQuiet('preis',this.value)" onchange="render()"><div class="sv">${w.preis}%</div></div>
+      <div class="slider-row"><label>Energieeffizienz</label><input type="range" min="0" max="100" value="${w.energie}" oninput="this.nextElementSibling.textContent=this.value+'%';setWeightQuiet('energie',this.value)" onchange="render()"><div class="sv">${w.energie}%</div></div>
+      <div class="slider-row"><label>Renovierung</label><input type="range" min="0" max="100" value="${w.reno}" oninput="this.nextElementSibling.textContent=this.value+'%';setWeightQuiet('reno',this.value)" onchange="render()"><div class="sv">${w.reno}%</div></div>
+      <div class="slider-row"><label>Lage</label><input type="range" min="0" max="100" value="${w.lage}" oninput="this.nextElementSibling.textContent=this.value+'%';setWeightQuiet('lage',this.value)" onchange="render()"><div class="sv">${w.lage}%</div></div>
+      <h2 style="margin-top:20px">Referenzwerte Preis-Leistung</h2>
+      <div class="row2">
+        <div class="field"><label>100 Punkte bei <span class="hint">€/m²</span></label><div class="inwrap"><input type="number" step="100" value="${app.scoreRef.good}" onchange="setRef('good',this.value)"><span class="unit">€</span></div></div>
+        <div class="field"><label>0 Punkte bei <span class="hint">€/m²</span></label><div class="inwrap"><input type="number" step="100" value="${app.scoreRef.bad}" onchange="setRef('bad',this.value)"><span class="unit">€</span></div></div>
+      </div>
+    </div>
+  </div>`;
+}
+function scoreRing(val){
+  const r=46,cx=58,cy=58,circ=2*Math.PI*r;
+  const off=circ*(1-val/100);
+  const col=scoreColor(val);
+  return `<svg width="116" height="116" viewBox="0 0 116 116">
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--line)" stroke-width="10"/>
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${col}" stroke-width="10" stroke-linecap="round"
+      stroke-dasharray="${circ.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 ${cx} ${cy})"/>
+    <text x="${cx}" y="${cy-2}" text-anchor="middle" font-size="30" font-weight="700" fill="var(--ink)" font-family="var(--mono)">${Math.round(val)}</text>
+    <text x="${cx}" y="${cy+18}" text-anchor="middle" font-size="11" fill="var(--ink-3)">/ 100</text>
+  </svg>`;
+}
+
+/* ---------- TAB: Vergleich ---------- */
+function viewVergleich(){
+  if(app.houses.length<1) return `<div class="empty"><b>Keine Häuser</b>Lege oben ein Haus an.</div>`;
+  const data=app.houses.map(h=>{const c=calc(h);return {h,c,vr:verkaufsRechnung(h,c,h.verkauf.jahre),s:scores(h,c)};});
+  const cols=data.map(d=>`<th>${esc(d.h.name)}</th>`).join("");
+  // Zeilen-Definition: [label, getter, fmt, besser(min/max)]
+  const rowsDef=[
+    ["__sec","Kauf & Finanzierung"],
+    ["Kaufpreis",d=>d.h.fin.kaufpreis,fmtE,"min"],
+    ["Preis / m²",d=>d.h.daten.wohnflaeche>0?d.h.fin.kaufpreis/d.h.daten.wohnflaeche:0,fmtE,"min"],
+    ["Eigenkapital",d=>d.h.fin.eigenkapital,fmtE,"max"],
+    ["Kaufnebenkosten",d=>d.c.nebenSumme,fmtE,"min"],
+    ["Renovierung",d=>d.c.renoGesamt,fmtE,"min"],
+    ["Gesamtinvestition",d=>d.c.gesamtinvest,fmtE,"min"],
+    ["Darlehen",d=>d.c.darlehen,fmtE,"min"],
+    ["__sec","Monatliche Kosten"],
+    ["Kreditrate",d=>d.c.rate,fmtE,"min"],
+    ["Echte Gesamtkosten / Monat",d=>d.c.gesamtMon,fmtE,"min"],
+    ["__sec","Objekt"],
+    ["Wohnfläche",d=>d.h.daten.wohnflaeche,v=>fmtN(v)+" m²","max"],
+    ["Zimmer",d=>d.h.daten.zimmer,v=>fmtN(v,1),"max"],
+    ["Energieklasse",d=>ENERGIE.indexOf(d.h.daten.energie),(v,d)=>d.h.daten.energie,"min"],
+    ["Baujahr",d=>num(d.h.daten.baujahr),(v)=>v?fmtN(v):"–","max"],
+    ["__sec","Wert & Rendite"],
+    [d=>`Bilanz nach ${d?d.h.verkauf.jahre:""} J.`,d=>d.vr.bilanz,fmtE,"max"],
+    ["__sec","Bewertung"],
+    ["Gesamtscore",d=>d.s.total,null,"max"]
+  ];
+  let body="";
+  for(const def of rowsDef){
+    if(def[0]==="__sec"){ body+=`<tr class="sec"><td>${def[1]}</td>${data.map(()=>"<td></td>").join("")}</tr>`; continue; }
+    const label=typeof def[0]==="function"?def[0](data[0]):def[0];
+    const vals=data.map(d=>def[1](d));
+    let bestIdx=-1;
+    if(def[3]&&data.length>1){
+      const valid=vals.map((v,i)=>({v,i})).filter(o=>isFinite(o.v));
+      if(valid.length){ bestIdx=def[3]==="min"?valid.reduce((a,b)=>b.v<a.v?b:a).i:valid.reduce((a,b)=>b.v>a.v?b:a).i; }
+    }
+    const cells=data.map((d,i)=>{
+      let txt;
+      if(label==="Gesamtscore"){ const col=scoreColor(vals[i]); txt=`<span class="score-pill" style="background:${col}1f;color:${col}">${Math.round(vals[i])}</span>`; }
+      else if(def[2]) txt=def[2](vals[i],d);
+      else txt=fmtN(vals[i]);
+      return `<td class="${i===bestIdx?"best":""}">${txt}</td>`;
+    }).join("");
+    body+=`<tr class="${bestIdx>=0?"best":""}"><td>${label}</td>${cells}</tr>`;
+  }
+  return `<div class="card"><h2>Häuservergleich</h2>
+    <p class="sub">Grün = bester Wert je Zeile. Verkaufsbilanz nach dem je Haus eingestellten Horizont.</p>
+    <div class="cmp-wrap"><table class="cmp"><thead><tr><th>Merkmal</th>${cols}</tr></thead><tbody>${body}</tbody></table></div>
+  </div>`;
+}
+
+/* ============================================================
+   AKTIONEN
+   ============================================================ */
+function setReno(k,field,val){ const h=active(); if(field==="prio") h.reno[k].prio=val; else h.reno[k][field]=num(val); render(); }
+/* leise Updates (ohne Neuaufbau) – für flüssige Schieberegler */
+function setQuiet(path,val){ const h=active(); const parts=path.split("."); let o=h; for(let i=0;i<parts.length-1;i++)o=o[parts[i]]; o[parts[parts.length-1]]=num(val); save(); }
+function setWeightQuiet(k,v){ app.weights[k]=num(v); save(); }
+function updateRsj(val){ const h=active(); h.fin._rsj=num(val); const c=calc(h);
+  const y=document.getElementById('rsjY'), v=document.getElementById('rsjV');
+  if(y)y.textContent=num(val); if(v)v.textContent=fmtE(c.plan.restNach(num(val))); save(); }
+function setBundesland(bl){ const h=active(); h.neben.bundesland=bl; h.neben.grestPct=GREST[bl]; render(); }
+function setWeight(k,v){ app.weights[k]=num(v); render(); }
+function setRef(k,v){ app.scoreRef[k]=num(v); render(); }
+
+function switchTab(t){ currentTab=t; document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b.dataset.tab===t)); document.querySelectorAll(".panel").forEach(p=>p.classList.toggle("active",p.dataset.p===t)); }
+function selectHouse(id){ app.activeId=id; render(); }
+function newHouse(){
+  const letters="ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const name="Haus "+(letters[app.houses.length]||app.houses.length+1);
+  const h=defaultHouse(name); initReno(h); app.houses.push(h); app.activeId=h.id; render(); toast('„'+name+'“ angelegt');
+}
+function renameHouse(){ const h=active(); const n=prompt("Name des Hauses:",h.name); if(n&&n.trim()){ h.name=n.trim(); render(); } }
+function deleteHouse(){
+  if(app.houses.length<=1){ toast("Mindestens ein Haus muss bleiben"); return; }
+  const h=active(); if(!confirm('„'+h.name+'“ wirklich löschen?')) return;
+  app.houses=app.houses.filter(x=>x.id!==h.id); app.activeId=app.houses[0].id; render(); toast("Gelöscht");
+}
+function exportJSON(){
+  const blob=new Blob([JSON.stringify(app,null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob); const a=document.createElement("a");
+  a.href=url; a.download="hauskauf-rechner.json"; a.click(); URL.revokeObjectURL(url); toast("Exportiert");
+}
+function importJSON(ev){
+  const file=ev.target.files[0]; if(!file) return;
+  const r=new FileReader();
+  r.onload=()=>{ try{ const d=JSON.parse(r.result);
+      if(d.houses&&d.houses.length){ app=d; app.houses.forEach(initReno); if(!app.weights)app.weights={preis:25,energie:20,reno:25,lage:30}; if(!app.scoreRef)app.scoreRef={good:2000,bad:6000,renoBadPct:30}; if(!app.activeId)app.activeId=app.houses[0].id; render(); toast("Import erfolgreich"); }
+      else toast("Keine gültigen Daten");
+    }catch(e){ toast("Fehler beim Import"); } };
+  r.readAsText(file); ev.target.value="";
+}
+
+/* ---------- INIT ---------- */
+document.getElementById("tabBar").addEventListener("click",e=>{ const b=e.target.closest(".tab"); if(b) switchTab(b.dataset.tab); });
+load();
+render();
+</script>
+</body>
+</html>
